@@ -376,6 +376,88 @@
 <a href="#375" id="375">375</a>
 <a href="#376" id="376">376</a>
 <a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright 2023 Greptime Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -394,12 +476,14 @@
 <span class="kw">use </span>std::fmt::Display;
 
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>snafu::ResultExt;
+<span class="kw">use </span>snafu::{ensure, OptionExt, ResultExt};
 <span class="kw">use </span>store_api::storage::{RegionId, RegionNumber};
 <span class="kw">use </span>table::metadata::TableId;
 
 <span class="kw">use super</span>::{DeserializedValueWithBytes, TableMetaValue};
-<span class="kw">use </span><span class="kw">crate</span>::error::{<span class="prelude-ty">Result</span>, SerdeJsonSnafu};
+<span class="kw">use </span><span class="kw">crate</span>::error::{
+    <span class="prelude-ty">Result</span>, SerdeJsonSnafu, TableRouteNotFoundSnafu, UnexpectedLogicalRouteTableSnafu,
+};
 <span class="kw">use </span><span class="kw">crate</span>::key::{to_removed_key, RegionDistribution, TableMetaKey, TABLE_ROUTE_PREFIX};
 <span class="kw">use </span><span class="kw">crate</span>::kv_backend::txn::{Compare, CompareOp, Txn, TxnOp, TxnOpResponse};
 <span class="kw">use </span><span class="kw">crate</span>::kv_backend::KvBackendRef;
@@ -431,8 +515,9 @@
 
 <span class="attr">#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 </span><span class="kw">pub struct </span>LogicalTableRouteValue {
-    <span class="comment">// TODO(LFC): Add table route for MetricsEngine table.
-</span>}
+    physical_table_id: TableId,
+    region_ids: Vec&lt;RegionId&gt;,
+}
 
 <span class="kw">impl </span>TableRouteValue {
     <span class="kw">pub fn </span>physical(region_routes: Vec&lt;RegionRoute&gt;) -&gt; <span class="self">Self </span>{
@@ -440,29 +525,50 @@
     }
 
     <span class="doccomment">/// Returns a new version [TableRouteValue] with `region_routes`.
-    </span><span class="kw">pub fn </span>update(<span class="kw-2">&amp;</span><span class="self">self</span>, region_routes: Vec&lt;RegionRoute&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>update(<span class="kw-2">&amp;</span><span class="self">self</span>, region_routes: Vec&lt;RegionRoute&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="macro">ensure!</span>(
+            <span class="self">self</span>.is_physical(),
+            UnexpectedLogicalRouteTableSnafu {
+                err_msg: <span class="macro">format!</span>(<span class="string">"{self:?} is a non-physical TableRouteValue."</span>),
+            }
+        );
         <span class="kw">let </span>version = <span class="self">self</span>.physical_table_route().version;
-        <span class="self">Self</span>::Physical(PhysicalTableRouteValue {
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Physical(PhysicalTableRouteValue {
             region_routes,
             version: version + <span class="number">1</span>,
-        })
+        }))
     }
 
     <span class="doccomment">/// Returns the version.
     ///
     /// For test purpose.
     </span><span class="attr">#[cfg(any(test, feature = <span class="string">"testing"</span>))]
-    </span><span class="kw">pub fn </span>version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
-        <span class="self">self</span>.physical_table_route().version
+    </span><span class="kw">pub fn </span>version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
+        <span class="macro">ensure!</span>(
+            <span class="self">self</span>.is_physical(),
+            UnexpectedLogicalRouteTableSnafu {
+                err_msg: <span class="macro">format!</span>(<span class="string">"{self:?} is a non-physical TableRouteValue."</span>),
+            }
+        );
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.physical_table_route().version)
     }
 
-    <span class="doccomment">/// Returns the corresponding [RegionRoute].
-    </span><span class="kw">pub fn </span>region_route(<span class="kw-2">&amp;</span><span class="self">self</span>, region_id: RegionId) -&gt; <span class="prelude-ty">Option</span>&lt;RegionRoute&gt; {
-        <span class="self">self</span>.physical_table_route()
+    <span class="doccomment">/// Returns the corresponding [RegionRoute], returns `None` if it's the specific region is not found.
+    ///
+    /// Note: It throws an error if it's a logical table
+    </span><span class="kw">pub fn </span>region_route(<span class="kw-2">&amp;</span><span class="self">self</span>, region_id: RegionId) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;RegionRoute&gt;&gt; {
+        <span class="macro">ensure!</span>(
+            <span class="self">self</span>.is_physical(),
+            UnexpectedLogicalRouteTableSnafu {
+                err_msg: <span class="macro">format!</span>(<span class="string">"{self:?} is a non-physical TableRouteValue."</span>),
+            }
+        );
+        <span class="prelude-val">Ok</span>(<span class="self">self
+            </span>.physical_table_route()
             .region_routes
             .iter()
             .find(|route| route.region.id == region_id)
-            .cloned()
+            .cloned())
     }
 
     <span class="doccomment">/// Returns true if it's [TableRouteValue::Physical].
@@ -471,11 +577,14 @@
     }
 
     <span class="doccomment">/// Gets the [RegionRoute]s of this [TableRouteValue::Physical].
-    ///
-    /// # Panics
-    /// The route type is not the [TableRouteValue::Physical].
-    </span><span class="kw">pub fn </span>region_routes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;RegionRoute&gt; {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.physical_table_route().region_routes
+    </span><span class="kw">pub fn </span>region_routes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>Vec&lt;RegionRoute&gt;&gt; {
+        <span class="macro">ensure!</span>(
+            <span class="self">self</span>.is_physical(),
+            UnexpectedLogicalRouteTableSnafu {
+                err_msg: <span class="macro">format!</span>(<span class="string">"{self:?} is a non-physical TableRouteValue."</span>),
+            }
+        );
+        <span class="prelude-val">Ok</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.physical_table_route().region_routes)
     }
 
     <span class="kw">fn </span>physical_table_route(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PhysicalTableRouteValue {
@@ -530,12 +639,19 @@
 }
 
 <span class="kw">impl </span>LogicalTableRouteValue {
-    <span class="kw">pub fn </span>physical_table_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TableId {
-        <span class="macro">todo!</span>()
+    <span class="kw">pub fn </span>new(physical_table_id: TableId, region_ids: Vec&lt;RegionId&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            physical_table_id,
+            region_ids,
+        }
     }
 
-    <span class="kw">pub fn </span>region_ids(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;RegionId&gt; {
-        <span class="macro">todo!</span>()
+    <span class="kw">pub fn </span>physical_table_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TableId {
+        <span class="self">self</span>.physical_table_id
+    }
+
+    <span class="kw">pub fn </span>region_ids(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;RegionId&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.region_ids
     }
 }
 
@@ -680,6 +796,54 @@
             .transpose()
     }
 
+    <span class="kw">pub async fn </span>get_physical_table_id(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        logical_or_physical_table_id: TableId,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;TableId&gt; {
+        <span class="kw">let </span>table_route = <span class="self">self
+            </span>.get(logical_or_physical_table_id)
+            .<span class="kw">await</span><span class="question-mark">?
+            </span>.context(TableRouteNotFoundSnafu {
+                table_id: logical_or_physical_table_id,
+            })<span class="question-mark">?
+            </span>.into_inner();
+
+        <span class="kw">match </span>table_route {
+            TableRouteValue::Physical(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(logical_or_physical_table_id),
+            TableRouteValue::Logical(x) =&gt; <span class="prelude-val">Ok</span>(x.physical_table_id()),
+        }
+    }
+
+    <span class="kw">pub async fn </span>get_physical_table_route(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        logical_or_physical_table_id: TableId,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(TableId, PhysicalTableRouteValue)&gt; {
+        <span class="kw">let </span>table_route = <span class="self">self
+            </span>.get(logical_or_physical_table_id)
+            .<span class="kw">await</span><span class="question-mark">?
+            </span>.context(TableRouteNotFoundSnafu {
+                table_id: logical_or_physical_table_id,
+            })<span class="question-mark">?
+            </span>.into_inner();
+
+        <span class="kw">match </span>table_route {
+            TableRouteValue::Physical(x) =&gt; <span class="prelude-val">Ok</span>((logical_or_physical_table_id, x)),
+            TableRouteValue::Logical(x) =&gt; {
+                <span class="kw">let </span>physical_table_id = x.physical_table_id();
+                <span class="kw">let </span>physical_table_route =
+                    <span class="self">self</span>.get(physical_table_id)
+                        .<span class="kw">await</span><span class="question-mark">?
+                        </span>.context(TableRouteNotFoundSnafu {
+                            table_id: physical_table_id,
+                        })<span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>((
+                    physical_table_id,
+                    physical_table_route.physical_table_route().clone(),
+                ))
+            }
+        }
+    }
+
     <span class="doccomment">/// It may return a subset of the `table_ids`.
     </span><span class="kw">pub async fn </span>batch_get(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -732,7 +896,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;RegionDistribution&gt;&gt; {
         <span class="self">self</span>.get(table_id)
             .<span class="kw">await</span><span class="question-mark">?
-            </span>.map(|table_route| region_distribution(table_route.region_routes()))
+            </span>.map(|table_route| <span class="prelude-val">Ok</span>(region_distribution(table_route.region_routes()<span class="question-mark">?</span>)))
             .transpose()
     }
 }

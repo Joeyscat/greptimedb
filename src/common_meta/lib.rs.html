@@ -60,6 +60,7 @@
 </span><span class="attr">#![feature(assert_matches)]
 #![feature(btree_extract_if)]
 #![feature(async_closure)]
+#![feature(let_chains)]
 
 </span><span class="kw">pub mod </span>cache_invalidator;
 <span class="kw">pub mod </span>datanode_manager;
@@ -80,8 +81,7 @@
 <span class="kw">pub mod </span>state_store;
 <span class="kw">pub mod </span>table_name;
 <span class="kw">pub mod </span>util;
-<span class="attr">#[allow(unused)]
-</span><span class="kw">pub mod </span>wal;
+<span class="kw">pub mod </span>wal;
 
 <span class="kw">pub type </span>ClusterId = u64;
 <span class="kw">pub type </span>DatanodeId = u64;

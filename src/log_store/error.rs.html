@@ -182,6 +182,30 @@
 <a href="#181" id="181">181</a>
 <a href="#182" id="182">182</a>
 <a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright 2023 Greptime Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -202,7 +226,9 @@
 <span class="kw">use </span>common_error::ext::ErrorExt;
 <span class="kw">use </span>common_macro::stack_trace_debug;
 <span class="kw">use </span>common_runtime::error::Error <span class="kw">as </span>RuntimeError;
+<span class="kw">use </span>serde_json::error::Error <span class="kw">as </span>JsonError;
 <span class="kw">use </span>snafu::{Location, Snafu};
+<span class="kw">use </span>store_api::storage::RegionId;
 
 <span class="kw">use </span><span class="kw">crate</span>::kafka::NamespaceImpl <span class="kw">as </span>KafkaNamespace;
 
@@ -307,20 +333,6 @@
         error: String,
     },
 
-    <span class="attr">#[snafu(display(<span class="string">"Failed to encode a record meta"</span>))]
-    </span>EncodeMeta {
-        location: Location,
-        <span class="attr">#[snafu(source)]
-        </span>error: serde_json::Error,
-    },
-
-    <span class="attr">#[snafu(display(<span class="string">"Failed to decode a record meta"</span>))]
-    </span>DecodeMeta {
-        location: Location,
-        <span class="attr">#[snafu(source)]
-        </span>error: serde_json::Error,
-    },
-
     <span class="attr">#[snafu(display(<span class="string">"Missing required key in a record"</span>))]
     </span>MissingKey { location: Location },
 
@@ -330,9 +342,16 @@
     <span class="attr">#[snafu(display(<span class="string">"Cannot build a record from empty entries"</span>))]
     </span>EmptyEntries { location: Location },
 
-    <span class="attr">#[snafu(display(<span class="string">"Failed to produce records to Kafka, topic: {}"</span>, topic))]
+    <span class="attr">#[snafu(display(
+        <span class="string">"Failed to produce records to Kafka, topic: {}, size: {}, limit: {}"</span>,
+        topic,
+        size,
+        limit,
+    ))]
     </span>ProduceRecord {
         topic: KafkaWalTopic,
+        size: usize,
+        limit: usize,
         location: Location,
         <span class="attr">#[snafu(source)]
         </span>error: rskafka::client::producer::Error,
@@ -356,6 +375,35 @@
 
     <span class="attr">#[snafu(display(<span class="string">"Failed to do a cast"</span>))]
     </span>Cast { location: Location },
+
+    <span class="attr">#[snafu(display(<span class="string">"Failed to encode object into json"</span>))]
+    </span>EncodeJson {
+        location: Location,
+        <span class="attr">#[snafu(source)]
+        </span>error: JsonError,
+    },
+
+    <span class="attr">#[snafu(display(<span class="string">"Failed to decode object from json"</span>))]
+    </span>DecodeJson {
+        location: Location,
+        <span class="attr">#[snafu(source)]
+        </span>error: JsonError,
+    },
+
+    <span class="attr">#[snafu(display(<span class="string">"The record sequence is not legal, error: {}"</span>, error))]
+    </span>IllegalSequence { location: Location, error: String },
+
+    <span class="attr">#[snafu(display(
+        <span class="string">"Attempt to append discontinuous log entry, region: {}, last index: {}, attempt index: {}"</span>,
+        region_id,
+        last_index,
+        attempt_index
+    ))]
+    </span>DiscontinuousLogIndex {
+        region_id: RegionId,
+        last_index: u64,
+        attempt_index: u64,
+    },
 }
 
 <span class="kw">impl </span>ErrorExt <span class="kw">for </span>Error {
